@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useRef } from "react";
 import {
     View,
     Text,
@@ -8,6 +8,8 @@ import {
     ScrollView,
     ActivityIndicator,
     Dimensions,
+    Modal,
+    FlatList,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -28,8 +30,17 @@ export default function AIModel() {
 
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState(null);
+    const [showPopup, setShowPopup] = useState(false);
+    const [activeScaleIndex, setActiveScaleIndex] = useState(0);
+
+    const flatListRef = useRef(null);
 
     const predictBusiness = async () => {
+        if (name.trim().length < 3 || industry.trim().length < 3 || description.trim().length < 3) {
+            setShowPopup(true);
+            return;
+        }
+
         if (!name || !industry || !description) return;
 
         try {
@@ -101,11 +112,135 @@ export default function AIModel() {
         ];
     }, [result]);
 
+    const formatCurrency = (value) => {
+        if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
+        if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
+        return `$${value}`;
+    };
+
+    const scaleItems = useMemo(() => {
+        if (!result?.scale) return [];
+        return [
+            {
+                key: "small",
+                label: "Small",
+                icon: "store-outline",
+                data: result.scale.small,
+            },
+            {
+                key: "medium",
+                label: "Medium",
+                icon: "office-building-outline",
+                data: result.scale.medium,
+            },
+            {
+                key: "large",
+                label: "Large",
+                icon: "city-variant-outline",
+                data: result.scale.large,
+            },
+        ];
+    }, [result]);
+
+    const onScaleScroll = (e) => {
+        const index = Math.round(e.nativeEvent.contentOffset.x / (width - 32));
+        setActiveScaleIndex(index);
+    };
+
+    const renderScaleCard = ({ item, index }) => {
+        const isActive = index === activeScaleIndex;
+
+        if (isActive) {
+            return (
+                <LinearGradient
+                    colors={["#2563eb", "#1d4ed8"]}
+                    style={styles.swipeCard}
+                >
+                    <View style={styles.scaleCardHeader}>
+                        <MaterialCommunityIcons name={item.icon} size={22} color="#fff" />
+                        <Text style={[styles.scaleCardLabel, styles.scaleCardLabelActive]}>{item.label} Scale</Text>
+                    </View>
+                    <View style={styles.scaleStatGrid}>
+                        <View style={styles.scaleStatItem}>
+                            <Text style={[styles.scaleCardStatLabel, styles.scaleCardStatLabelActive]}>Workers</Text>
+                            <Text style={[styles.scaleCardStatValue, styles.scaleCardStatValueActive]}>{item.data.workers}</Text>
+                        </View>
+                        <View style={styles.scaleStatItem}>
+                            <Text style={[styles.scaleCardStatLabel, styles.scaleCardStatLabelActive]}>Investment</Text>
+                            <Text style={[styles.scaleCardStatValue, styles.scaleCardStatValueActive]}>{formatCurrency(item.data.investment)}</Text>
+                        </View>
+                        <View style={styles.scaleStatItem}>
+                            <Text style={[styles.scaleCardStatLabel, styles.scaleCardStatLabelActive]}>Revenue</Text>
+                            <Text style={[styles.scaleCardStatValue, styles.scaleCardStatValueActive]}>{formatCurrency(item.data.revenue)}</Text>
+                        </View>
+                        <View style={styles.scaleStatItem}>
+                            <Text style={[styles.scaleCardStatLabel, styles.scaleCardStatLabelActive]}>Profit</Text>
+                            <Text style={[styles.scaleCardStatValue, styles.scaleCardStatValueActive]}>{formatCurrency(item.data.profit)}</Text>
+                        </View>
+                    </View>
+                </LinearGradient>
+            );
+        }
+
+        return (
+            <View style={[styles.swipeCard, styles.swipeCardInactive]}>
+                <View style={styles.scaleCardHeader}>
+                    <MaterialCommunityIcons name={item.icon} size={22} color="#2563eb" />
+                    <Text style={styles.scaleCardLabel}>{item.label} Scale</Text>
+                </View>
+                <View style={styles.scaleStatGrid}>
+                    <View style={styles.scaleStatItem}>
+                        <Text style={styles.scaleCardStatLabel}>Workers</Text>
+                        <Text style={styles.scaleCardStatValue}>{item.data.workers}</Text>
+                    </View>
+                    <View style={styles.scaleStatItem}>
+                        <Text style={styles.scaleCardStatLabel}>Investment</Text>
+                        <Text style={styles.scaleCardStatValue}>{formatCurrency(item.data.investment)}</Text>
+                    </View>
+                    <View style={styles.scaleStatItem}>
+                        <Text style={styles.scaleCardStatLabel}>Revenue</Text>
+                        <Text style={styles.scaleCardStatValue}>{formatCurrency(item.data.revenue)}</Text>
+                    </View>
+                    <View style={styles.scaleStatItem}>
+                        <Text style={styles.scaleCardStatLabel}>Profit</Text>
+                        <Text style={styles.scaleCardStatValue}>{formatCurrency(item.data.profit)}</Text>
+                    </View>
+                </View>
+            </View>
+        );
+    };
+
     return (
         <ScrollView
             style={styles.container}
             showsVerticalScrollIndicator={false}
         >
+            <Modal
+                visible={showPopup}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowPopup(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalBox}>
+                        <View style={styles.modalIconBox}>
+                            <Ionicons name="alert-circle-outline" size={40} color="#2563eb" />
+                        </View>
+                        <Text style={styles.modalTitle}>Input Too Low</Text>
+                        <Text style={styles.modalDesc}>
+                            Please provide at least 3 characters for Business Name, Industry, and Description to get an accurate prediction.
+                        </Text>
+                        <TouchableOpacity
+                            style={styles.modalBtn}
+                            activeOpacity={0.9}
+                            onPress={() => setShowPopup(false)}
+                        >
+                            <Text style={styles.modalBtnText}>Got it</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
             <LinearGradient
                 colors={["#2563eb", "#1e40af"]}
                 style={styles.hero}
@@ -284,6 +419,41 @@ export default function AIModel() {
                             {result.scale_detected}
                         </Text>
                     </View>
+
+                    {result.scale && (
+                        <View style={styles.scaleBreakdownContainer}>
+                            <Text style={styles.scaleBreakdownTitle}>
+                                Scale Breakdown
+                            </Text>
+
+                            <FlatList
+                                ref={flatListRef}
+                                data={scaleItems}
+                                keyExtractor={(item) => item.key}
+                                horizontal
+                                pagingEnabled
+                                showsHorizontalScrollIndicator={false}
+                                snapToInterval={width - 32}
+                                decelerationRate="fast"
+                                onScroll={onScaleScroll}
+                                scrollEventThrottle={16}
+                                renderItem={renderScaleCard}
+                                contentContainerStyle={styles.swipeList}
+                            />
+
+                            <View style={styles.dotRow}>
+                                {scaleItems.map((_, i) => (
+                                    <View
+                                        key={i}
+                                        style={[
+                                            styles.dot,
+                                            i === activeScaleIndex && styles.dotActive,
+                                        ]}
+                                    />
+                                ))}
+                            </View>
+                        </View>
+                    )}
 
                     <View style={styles.chartContainer}>
                         <Text style={styles.chartTitle}>
@@ -518,6 +688,67 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
 
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.45)",
+        justifyContent: "center",
+        alignItems: "center",
+        paddingHorizontal: 32,
+    },
+
+    modalBox: {
+        backgroundColor: "#fff",
+        borderRadius: 28,
+        padding: 28,
+        alignItems: "center",
+        width: "100%",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 24,
+        elevation: 10,
+    },
+
+    modalIconBox: {
+        backgroundColor: "#dbeafe",
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        justifyContent: "center",
+        alignItems: "center",
+        marginBottom: 18,
+    },
+
+    modalTitle: {
+        fontSize: 22,
+        fontWeight: "800",
+        color: "#0f172a",
+        marginBottom: 10,
+    },
+
+    modalDesc: {
+        fontSize: 14,
+        color: "#475569",
+        textAlign: "center",
+        lineHeight: 22,
+        marginBottom: 24,
+    },
+
+    modalBtn: {
+        backgroundColor: "#2563eb",
+        width: "100%",
+        height: 52,
+        borderRadius: 16,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+
+    modalBtnText: {
+        color: "#fff",
+        fontWeight: "700",
+        fontSize: 16,
+    },
+
     resultContainer: {
         marginTop: 30,
         paddingHorizontal: 16,
@@ -604,6 +835,101 @@ const styles = StyleSheet.create({
         fontWeight: "800",
         marginTop: 6,
         textTransform: "capitalize",
+    },
+
+    scaleBreakdownContainer: {
+        marginTop: 24,
+    },
+
+    scaleBreakdownTitle: {
+        fontSize: 18,
+        fontWeight: "800",
+        color: "#0f172a",
+        marginBottom: 14,
+    },
+
+    swipeList: {
+        paddingHorizontal: 0,
+    },
+
+    swipeCard: {
+        width: width - 32,
+        borderRadius: 24,
+        padding: 22,
+    },
+
+    swipeCardInactive: {
+        backgroundColor: "#f8fafc",
+        borderWidth: 1,
+        borderColor: "#e2e8f0",
+    },
+
+    scaleCardHeader: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        marginBottom: 18,
+    },
+
+    scaleCardLabel: {
+        fontSize: 16,
+        fontWeight: "800",
+        color: "#0f172a",
+    },
+
+    scaleCardLabelActive: {
+        color: "#fff",
+    },
+
+    scaleStatGrid: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 12,
+    },
+
+    scaleStatItem: {
+        width: "45%",
+    },
+
+    scaleCardStatLabel: {
+        fontSize: 11,
+        color: "#64748b",
+        marginBottom: 4,
+    },
+
+    scaleCardStatLabelActive: {
+        color: "rgba(255,255,255,0.7)",
+    },
+
+    scaleCardStatValue: {
+        fontSize: 18,
+        fontWeight: "800",
+        color: "#0f172a",
+    },
+
+    scaleCardStatValueActive: {
+        color: "#fff",
+    },
+
+    dotRow: {
+        flexDirection: "row",
+        justifyContent: "center",
+        alignItems: "center",
+        marginTop: 14,
+        gap: 6,
+    },
+
+    dot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: "#dbeafe",
+    },
+
+    dotActive: {
+        backgroundColor: "#2563eb",
+        width: 22,
+        borderRadius: 4,
     },
 
     chartContainer: {
