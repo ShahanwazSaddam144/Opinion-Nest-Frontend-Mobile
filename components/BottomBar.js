@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
     View,
     Text,
@@ -8,6 +8,7 @@ import {
     Modal,
     Pressable,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -19,12 +20,17 @@ const BLACK = "#0F172A";
 const GREY = "#94A3B8";
 const WHITE = "#FFFFFF";
 
-export default function BottomBar({ activeTab, onLogout }) {
+const API_URL = "https://api.opinion-nest-mobile.buttnetworks.com/api/auth";
+
+export default function BottomBar({ activeTab }) {
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
 
     const [avatarMenuVisible, setAvatarMenuVisible] = useState(false);
     const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+
+    const [user, setUser] = useState(null);
+    const [initials, setInitials] = useState("U");
 
     const avatarScale = useRef(new Animated.Value(1)).current;
     const menuAnim = useRef(new Animated.Value(0)).current;
@@ -65,6 +71,43 @@ export default function BottomBar({ activeTab, onLogout }) {
             ),
         },
     ];
+
+    const getInitials = (name) => {
+        if (!name) return "U";
+        const parts = name.trim().split(" ");
+        if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    };
+
+    const fetchUser = async () => {
+        try {
+            const token = await AsyncStorage.getItem("token");
+            if (!token) return;
+
+            const res = await fetch(`${API_URL}/me`, {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            const data = await res.json();
+
+            if (data?.success) {
+                setUser(data.user);
+                setInitials(getInitials(data.user.name));
+            } else {
+                await AsyncStorage.removeItem("token");
+                navigation.replace("AuthScreen");
+            }
+        } catch (e) {
+            console.log(e);
+        }
+    };
+
+    useEffect(() => {
+        fetchUser();
+    }, []);
 
     const openAvatarMenu = () => {
         setAvatarMenuVisible(true);
@@ -124,9 +167,25 @@ export default function BottomBar({ activeTab, onLogout }) {
         }).start(() => setLogoutModalVisible(false));
     };
 
-    const confirmLogout = () => {
-        closeLogoutModal();
-        setTimeout(() => onLogout?.(), 250);
+    const confirmLogout = async () => {
+        try {
+            const token = await AsyncStorage.getItem("token");
+
+            await fetch(`${API_URL}/logout`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            await AsyncStorage.removeItem("token");
+            await AsyncStorage.removeItem("user");
+
+            closeLogoutModal();
+            setTimeout(() => navigation.replace("AuthScreen"), 250);
+        } catch (e) {
+            console.log(e);
+        }
     };
 
     const menuTranslateY = menuAnim.interpolate({
@@ -205,13 +264,13 @@ export default function BottomBar({ activeTab, onLogout }) {
                                     <View style={styles.menuUserRow}>
                                         <View style={styles.menuAvatarSmall}>
                                             <Text style={styles.menuAvatarText}>
-                                                SSB
+                                                {initials}
                                             </Text>
                                         </View>
 
                                         <View>
                                             <Text style={styles.menuName}>
-                                                SSB User
+                                                {user?.name || "User"}
                                             </Text>
 
                                             <Text style={styles.menuRole}>
@@ -249,13 +308,13 @@ export default function BottomBar({ activeTab, onLogout }) {
                                 style={[
                                     styles.avatar,
                                     {
-                                        transform: [
-                                            { scale: avatarScale },
-                                        ],
+                                        transform: [{ scale: avatarScale }],
                                     },
                                 ]}
                             >
-                                <Text style={styles.avatarText}>SSB</Text>
+                                <Text style={styles.avatarText}>
+                                    {initials}
+                                </Text>
 
                                 <View style={styles.avatarOnline} />
                             </Animated.View>
@@ -345,20 +404,17 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
     },
-
     bar: {
         flexDirection: "row",
         paddingTop: 10,
         paddingHorizontal: 8,
     },
-
     tabItem: {
         flex: 1,
         alignItems: "center",
         gap: 4,
         position: "relative",
     },
-
     iconWrap: {
         width: 44,
         height: 36,
@@ -366,23 +422,19 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
-
     iconWrapActive: {
         backgroundColor: BLUE_LIGHT,
     },
-
     tabLabel: {
         fontSize: 10,
         fontWeight: "500",
         color: GREY,
         letterSpacing: 0.3,
     },
-
     tabLabelActive: {
         color: BLUE,
         fontWeight: "700",
     },
-
     avatar: {
         width: 38,
         height: 38,
@@ -396,14 +448,12 @@ const styles = StyleSheet.create({
         shadowRadius: 6,
         elevation: 6,
     },
-
     avatarText: {
         color: WHITE,
         fontSize: 11,
         fontWeight: "800",
         letterSpacing: 0.5,
     },
-
     avatarOnline: {
         position: "absolute",
         bottom: 1,
@@ -415,7 +465,6 @@ const styles = StyleSheet.create({
         borderWidth: 1.5,
         borderColor: WHITE,
     },
-
     menuOverlay: {
         position: "absolute",
         top: -1000,
@@ -424,15 +473,13 @@ const styles = StyleSheet.create({
         bottom: -1000,
         zIndex: 10,
     },
-
     avatarMenu: {
         position: "absolute",
         bottom: 58,
-        right: -8,
-        width: 200,
+        right: 8,
+        width: 230,
         zIndex: 20,
     },
-
     menuArrow: {
         width: 12,
         height: 12,
@@ -447,7 +494,6 @@ const styles = StyleSheet.create({
         shadowRadius: 2,
         borderTopLeftRadius: 2,
     },
-
     menuContent: {
         backgroundColor: WHITE,
         borderRadius: 14,
@@ -460,7 +506,6 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: "#F1F5F9",
     },
-
     menuUserRow: {
         flexDirection: "row",
         alignItems: "center",
@@ -468,7 +513,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         paddingVertical: 14,
     },
-
     menuAvatarSmall: {
         width: 34,
         height: 34,
@@ -477,31 +521,26 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
-
     menuAvatarText: {
         color: WHITE,
         fontSize: 9,
         fontWeight: "800",
         letterSpacing: 0.4,
     },
-
     menuName: {
         fontSize: 13,
         fontWeight: "700",
         color: BLACK,
     },
-
     menuRole: {
         fontSize: 11,
         color: GREY,
         fontWeight: "400",
     },
-
     menuDivider: {
         height: 1,
         backgroundColor: "#F1F5F9",
     },
-
     logoutBtn: {
         flexDirection: "row",
         alignItems: "center",
@@ -509,13 +548,11 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         paddingVertical: 13,
     },
-
     logoutBtnText: {
         fontSize: 13,
         fontWeight: "600",
         color: "#EF4444",
     },
-
     modalBackdrop: {
         flex: 1,
         backgroundColor: "rgba(15,23,42,0.45)",
@@ -523,7 +560,6 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         paddingHorizontal: 28,
     },
-
     modalCard: {
         backgroundColor: WHITE,
         borderRadius: 20,
@@ -536,7 +572,6 @@ const styles = StyleSheet.create({
         shadowRadius: 32,
         elevation: 20,
     },
-
     modalIconWrap: {
         width: 60,
         height: 60,
@@ -548,7 +583,6 @@ const styles = StyleSheet.create({
         borderWidth: 1.5,
         borderColor: BLUE_MID,
     },
-
     modalTitle: {
         fontSize: 20,
         fontWeight: "800",
@@ -556,7 +590,6 @@ const styles = StyleSheet.create({
         marginBottom: 10,
         letterSpacing: -0.4,
     },
-
     modalBody: {
         fontSize: 13,
         color: GREY,
@@ -565,13 +598,11 @@ const styles = StyleSheet.create({
         marginBottom: 26,
         fontWeight: "400",
     },
-
     modalActions: {
         flexDirection: "row",
         gap: 10,
         width: "100%",
     },
-
     cancelBtn: {
         flex: 1,
         paddingVertical: 13,
@@ -581,13 +612,11 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: "#E2E8F0",
     },
-
     cancelBtnText: {
         fontSize: 14,
         fontWeight: "700",
         color: BLACK,
     },
-
     confirmBtn: {
         flex: 1,
         paddingVertical: 13,
@@ -600,7 +629,6 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
         elevation: 6,
     },
-
     confirmBtnText: {
         fontSize: 14,
         fontWeight: "700",
