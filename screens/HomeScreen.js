@@ -3,7 +3,7 @@ import BottomBar from "../components/BottomBar";
 import Hero from "../components/HomeComponents/Hero";
 import AIModel from "../components/HomeComponents/AIModel";
 import TopBar from "../components/TopBar";
-import Chatbot from "./Chatbot";
+import Chatbot from "../components/Chatbot";
 
 export default function HomeScreen() {
     return (

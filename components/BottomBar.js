@@ -49,7 +49,7 @@ export default function BottomBar({ activeTab }) {
             ),
         },
         {
-            key: "HistoryScreen",
+            key: "ChatHistoryScreen",
             label: "History",
             icon: (active) => (
                 <MaterialCommunityIcons
