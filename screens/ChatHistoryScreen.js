@@ -21,6 +21,7 @@ import {
 
 import BottomBar from "../components/BottomBar";
 import TopBar from "../components/TopBar";
+import Chatbot from "../components/Chatbot";
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -671,7 +672,7 @@ export default function ChatHistoryScreen() {
                     </View>
                 </View>
             </Modal>
-
+            <Chatbot />
             <BottomBar activeTab={"ChatHistoryScreen"} />
         </View>
     );
@@ -847,7 +848,6 @@ const styles = StyleSheet.create({
     },
 
     viewMoreBtn: {
-        backgroundColor: PRIMARY,
         paddingVertical: 14,
         borderRadius: 16,
         alignItems: "center",
@@ -855,7 +855,7 @@ const styles = StyleSheet.create({
     },
 
     viewMoreText: {
-        color: "#fff",
+        color: PRIMARY,
         fontWeight: "700",
         fontSize: 16,
     },
