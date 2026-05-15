@@ -20,10 +20,17 @@
         "foregroundImage": "./assets/favicon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.shahnawaz_butt15.OpinionNest"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "98478df7-b21d-495d-9955-3de2fe27ffa8"
+      }
+    },
+    "owner": "shahnawaz_butt15"
   }
 }
