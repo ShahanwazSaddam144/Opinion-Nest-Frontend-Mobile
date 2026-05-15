@@ -6,6 +6,7 @@ import WelcomeScreen from './screens/WelcomeScreen';
 import HomeScreen from './screens/HomeScreen';
 import AuthScreen from './screens/AuthScreen';
 import ChatHistoryScreen from './screens/ChatHistoryScreen';
+import ReportScreen from './screens/ReportScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -18,6 +19,7 @@ export default function App() {
         <Stack.Screen name="HomeScreen" component={HomeScreen}/>
         <Stack.Screen name="AuthScreen" component={AuthScreen}/>
         <Stack.Screen name="ChatHistoryScreen" component={ChatHistoryScreen}/>
+        <Stack.Screen name="ReportScreen" component={ReportScreen} />
       </Stack.Navigator>
     </NavigationContainer>
     </SafeAreaProvider>

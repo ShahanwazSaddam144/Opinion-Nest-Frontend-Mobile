@@ -60,7 +60,7 @@ export default function BottomBar({ activeTab }) {
             ),
         },
         {
-            key: "ReportsScreen",
+            key: "ReportScreen",
             label: "Reports",
             icon: (active) => (
                 <Ionicons
